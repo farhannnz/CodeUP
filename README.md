@@ -1,5 +1,4 @@
-markdown
-Copy code
+
 # 📚 CodeUP - Learning Management System (LMS)
 
 CodeUP is a full-stack Learning Management System (LMS) built using the **MERN** stack – **MongoDB**, **Express.js**, **React.js**, and **Node.js**.  
@@ -50,13 +49,17 @@ Cloudinary, Multer, JWT, dotenv
 ```bash
 git clone https://github.com/your-username/CodeUP-LMS.git
 cd CodeUP-LMS
-2. Backend Setup (/server)
-bash
-Copy code
+
+### 2. Backend Setup (/server)
+
+```bash
+
 cd server
 npm install
-Create a .env file inside /server:
 
+### Create a .env file inside /server:
+
+```bash
 PORT=5000
 MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret
@@ -65,16 +68,16 @@ CLOUDINARY_API_KEY=your_cloudinary_api_key
 CLOUDINARY_API_SECRET=your_cloudinary_api_secret
 Start the backend server:
 
-bash
-Copy code
+```bash
 npm run dev
-3. Frontend Setup (/client)
-bash
-Copy code
+
+### 3. Frontend Setup (/client)
+```bash
 cd ../client
 npm install
 npm start
-Open your browser and visit:
+
+### Open your browser and visit:
 
 🔗 http://localhost:3000
 
