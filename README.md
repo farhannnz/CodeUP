@@ -50,12 +50,16 @@ Cloudinary, Multer, JWT, dotenv
 git clone https://github.com/your-username/CodeUP-LMS.git
 cd CodeUP-LMS
 
+---
+
 ### 2. Backend Setup (/server)
 
 ```bash
 
 cd server
 npm install
+
+---
 
 ### Create a .env file inside /server:
 
@@ -76,12 +80,14 @@ npm run dev
 cd ../client
 npm install
 npm start
+---
 
 ### Open your browser and visit:
 
 🔗 http://localhost:3000
+---
 
-📁 API Endpoints
+### 📁 API Endpoints
 Method	Endpoint	Description
 GET	/courses	Get all courses
 POST	/admin/course	Add new course (Admin only)
@@ -91,7 +97,7 @@ POST	/auth/register	Register a new user
 POST	/auth/login	Login and get token
 🖼 Screenshots
 Add screenshots of your project here (e.g. Home page, Admin dashboard, Course view, Watch lecture etc.)
-
+--- 
 📌 Future Enhancements
 💳 Payment Integration for Premium Content
 ❓ Quiz Modules for Each Lecture
