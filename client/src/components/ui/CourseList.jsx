@@ -15,7 +15,7 @@ const CourseList = () => {
     // Fetch Courses from API
     const fetchCourseData = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/courses", {
+        const response = await axios.get("https://codeup-ql59.onrender.com/courses", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setCourse_list(response.data.courses); // Store courses in state

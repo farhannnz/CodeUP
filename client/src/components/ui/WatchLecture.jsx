@@ -17,7 +17,7 @@ const WatchLecture = () => {
     const fetchLecture = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`http://localhost:5000/lectures/${lectureId}`);
+        const response = await axios.get(`https://codeup-ql59.onrender.com/lectures/${lectureId}`);
         setLecture(response.data.lecture);
 
         const savedProgress = Cookies.get(`progress_${lectureId}`);

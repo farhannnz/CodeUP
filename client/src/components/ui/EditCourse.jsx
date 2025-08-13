@@ -21,7 +21,7 @@ const EditCourse = () => {
     // ✅ Fetch existing course data
     const fetchCourse = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/courses/${id}`, {
+        const response = await axios.get(`https://codeup-ql59.onrender.com/courses/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -46,7 +46,7 @@ const EditCourse = () => {
     const token = Cookies.get("token");
 
     try {
-      await axios.put(`http://localhost:5000/courses/${id}`, course, {
+      await axios.put(`https://codeup-ql59.onrender.com/courses/${id}`, course, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

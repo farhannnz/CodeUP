@@ -34,7 +34,7 @@ const Login = () => {
     try {
       if (activeTab === "login") {
         // Login API
-        const response = await axios.post("http://localhost:5000/login", loginData);
+        const response = await axios.post("https://codeup-ql59.onrender.com/login", loginData);
 
         // Save Token in Cookies
         Cookies.set("token", response.data.token, { expires: 20, path: "/" });
@@ -46,7 +46,7 @@ const Login = () => {
         window.location.href = "/";
       } else {
         // Register API
-        const response = await axios.post("http://localhost:5000/register", signUpData);
+        const response = await axios.post("https://codeup-ql59.onrender.com/register", signUpData);
         alert("Registration successful!");
         console.log(response.data);
       }

@@ -24,7 +24,7 @@ const CreateCourse = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:5000/create-course",
+        "https://codeup-ql59.onrender.com/create-course",
         { title, category },
         {
           headers: {

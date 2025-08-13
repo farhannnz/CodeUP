@@ -13,7 +13,7 @@ const ViewCourse = () => {
   useEffect(() => {
     const fetchCourse = async () => {
       try {
-        const response = await axios.get(`http://localhost:5000/view-courses/${id}`);
+        const response = await axios.get(`https://codeup-ql59.onrender.com/view-courses/${id}`);
         setCourse(response.data.course);
       } catch (err) {
         setError(err.message || "Something went wrong");
@@ -34,7 +34,7 @@ const ViewCourse = () => {
       }
 
       const response = await axios.post(
-        "http://localhost:5000/enroll-course",
+        "https://codeup-ql59.onrender.com/enroll-course",
         { courseId: id },
         {
           headers: { Authorization: `Bearer ${token}` },

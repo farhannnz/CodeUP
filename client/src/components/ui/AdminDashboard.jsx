@@ -12,7 +12,7 @@ const AdminDashboard = () => {
 
     const fetchAdminCourses = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/courses", {
+        const response = await axios.get("https://codeup-ql59.onrender.com/courses", {
           headers: { Authorization: `Bearer ${token}` },
         });
 

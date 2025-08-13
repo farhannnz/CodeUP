@@ -27,7 +27,7 @@ const Profile = () => {
 
     const fetchUserData = async () => {
       try {
-        const response = await axios.get("http://localhost:5000/profile", {
+        const response = await axios.get("https://codeup-ql59.onrender.com/profile", {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(response.data);
@@ -53,7 +53,7 @@ const Profile = () => {
   const fetchCoursesData = async (courseIds) => {
     try {
       const coursePromises = courseIds.map((courseId) =>
-        axios.get(`http://localhost:5000/course/${courseId}`, {
+        axios.get(`https://codeup-ql59.onrender.com/course/${courseId}`, {
           headers: { Authorization: `Bearer ${token}` },
         })
       );
@@ -96,7 +96,7 @@ const Profile = () => {
     try {
       // Send PUT request to update user profile
       const response = await axios.put(
-        "http://localhost:5000/edit-profile",
+        "https://codeup-ql59.onrender.com/edit-profile",
         editFormData, // Send the full editFormData
         {
           headers: {

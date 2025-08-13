@@ -27,7 +27,7 @@ const AddLecture = () => {
 
     try {
       const response = await axios.post(
-        `http://localhost:5000/add-lecture/${Courseid}`, // Use Courseid in the URL
+        `https://codeup-ql59.onrender.com/add-lecture/${Courseid}`, // Use Courseid in the URL
         { lectureTitle, videoUrl },
         {
           headers: {
