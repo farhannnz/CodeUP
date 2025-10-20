@@ -95,8 +95,20 @@ const AddLecture = () => {
         }, 2000);
       }
     } catch (err) {
-      console.error("Error:", err.response?.data || err.message);
-      const errorMessage = err.response?.data?.message || "Failed to add lecture. Please try again.";
+      console.error("Error adding lecture:", err);
+      console.error("Error response:", err.response?.data);
+      console.error("Error message:", err.message);
+      
+      let errorMessage = "Failed to add lecture. Please try again.";
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
     } finally {
       setLoading(false);

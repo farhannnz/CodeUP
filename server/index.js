@@ -270,14 +270,38 @@ app.post("/add-lecture/:id", authenticateUser, async (req, res) => {
     const { lectureTitle, videoUrl, description, duration, isPreviewFree, resources } = req.body;
     const { id: courseId } = req.params;
 
+    console.log("Add lecture request:", { 
+      courseId, 
+      lectureTitle, 
+      videoUrl, 
+      description, 
+      duration, 
+      isPreviewFree, 
+      resources 
+    });
+
     if (!lectureTitle || !videoUrl) {
-      return res.status(400).json({ message: "Lecture title and video URL are required" });
+      return res.status(400).json({ 
+        success: false,
+        message: "Lecture title and video URL are required" 
+      });
+    }
+
+    // Validate courseId
+    if (!courseId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Invalid Course ID" 
+      });
     }
 
     // Get the current number of lectures to set order
     const course = await Course.findById(courseId);
     if (!course) {
-      return res.status(404).json({ message: "Course not found" });
+      return res.status(404).json({ 
+        success: false,
+        message: "Course not found" 
+      });
     }
 
     const lecture = new Lecture({
@@ -292,9 +316,11 @@ app.post("/add-lecture/:id", authenticateUser, async (req, res) => {
     });
 
     await lecture.save();
+    console.log("Lecture saved:", lecture._id);
 
     course.lectures.push(lecture._id);
     await course.save();
+    console.log("Course updated with new lecture");
 
     res.status(201).json({
       success: true,
@@ -302,11 +328,12 @@ app.post("/add-lecture/:id", authenticateUser, async (req, res) => {
       lecture,
     });
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error adding lecture:", error);
+    console.error("Error stack:", error.stack);
     res.status(500).json({
       success: false,
-      message: "Internal Server Error",
-      error: error.message || error,
+      message: error.message || "Internal Server Error",
+      error: error.toString()
     });
   }
 });
@@ -423,29 +450,52 @@ app.post("/complete-lecture", authenticateUser, async (req, res) => {
     const { lectureId, courseId } = req.body;
     const userId = req.user.id;
 
+    console.log("Mark as complete request:", { lectureId, courseId, userId });
+
     if (!lectureId || !courseId) {
       return res.status(400).json({ success: false, message: "Lecture ID and Course ID are required" });
     }
 
-    // Find user
+    // Find user and course
     const user = await User.findById(userId);
+    const course = await Course.findById(courseId).populate('lectures');
+
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Check if lecture already completed
-    if (!user.completedLectures.includes(lectureId)) {
-      user.completedLectures.push(lectureId);
-      await user.save();
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
     }
 
-    // Get course progress
-    const course = await Course.findById(courseId).populate('lectures');
+    // Check if lecture exists in course
+    const lectureExists = course.lectures.some(lec => lec._id.toString() === lectureId.toString());
+    if (!lectureExists) {
+      return res.status(404).json({ success: false, message: "Lecture not found in this course" });
+    }
+
+    // Check if already completed
+    const isAlreadyCompleted = user.completedLectures.some(
+      id => id.toString() === lectureId.toString()
+    );
+    
+    if (!isAlreadyCompleted) {
+      user.completedLectures.push(lectureId);
+      await user.save();
+      console.log("Lecture marked as completed and saved");
+    } else {
+      console.log("Lecture was already completed");
+    }
+
+    // Calculate progress
     const totalLectures = course.lectures.length;
-    const completedCount = course.lectures.filter(lecture => 
-      user.completedLectures.includes(lecture._id)
-    ).length;
+    const completedLecturesInCourse = course.lectures.filter(lecture => 
+      user.completedLectures.some(id => id.toString() === lecture._id.toString())
+    );
+    const completedCount = completedLecturesInCourse.length;
     const progress = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+
+    console.log("Progress calculated:", { totalLectures, completedCount, progress });
 
     res.status(200).json({ 
       success: true, 
@@ -453,7 +503,8 @@ app.post("/complete-lecture", authenticateUser, async (req, res) => {
       progress,
       completedCount,
       totalLectures,
-      isCompleted: progress === 100
+      isCompleted: progress === 100,
+      completedLectureIds: user.completedLectures.map(id => id.toString())
     });
   } catch (error) {
     console.error("Error completing lecture:", error);
@@ -467,6 +518,8 @@ app.get("/course-progress/:courseId", authenticateUser, async (req, res) => {
     const { courseId } = req.params;
     const userId = req.user.id;
 
+    console.log("Get progress request:", { courseId, userId });
+
     // Validate course ID
     if (!courseId.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ success: false, message: "Invalid Course ID" });
@@ -475,16 +528,25 @@ app.get("/course-progress/:courseId", authenticateUser, async (req, res) => {
     const user = await User.findById(userId);
     const course = await Course.findById(courseId).populate('lectures');
 
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found" });
     }
 
     const totalLectures = course.lectures.length;
-    const completedLectures = course.lectures.filter(lecture => 
-      user.completedLectures.includes(lecture._id)
+    
+    // Get completed lectures for this specific course
+    const completedLecturesInCourse = course.lectures.filter(lecture => 
+      user.completedLectures.some(id => id.toString() === lecture._id.toString())
     );
-    const completedCount = completedLectures.length;
+    
+    const completedCount = completedLecturesInCourse.length;
     const progress = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+
+    console.log("Progress response:", { totalLectures, completedCount, progress });
 
     res.status(200).json({
       success: true,
@@ -492,7 +554,7 @@ app.get("/course-progress/:courseId", authenticateUser, async (req, res) => {
       completedCount,
       totalLectures,
       isCompleted: progress === 100,
-      completedLectureIds: user.completedLectures
+      completedLectureIds: user.completedLectures.map(id => id.toString())
     });
   } catch (error) {
     console.error("Error fetching progress:", error);
@@ -506,25 +568,44 @@ app.get("/generate-certificate/:courseId", authenticateUser, async (req, res) =>
     const { courseId } = req.params;
     const userId = req.user.id;
 
+    console.log("Generate certificate request:", { courseId, userId });
+
     const user = await User.findById(userId);
     const course = await Course.findById(courseId).populate('lectures');
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
 
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found" });
     }
 
+    // Check if user is enrolled
+    if (!user.enrolledCourses.some(id => id.toString() === courseId.toString())) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "You must be enrolled in this course to get a certificate" 
+      });
+    }
+
     // Check if course is completed
     const totalLectures = course.lectures.length;
-    const completedCount = course.lectures.filter(lecture => 
-      user.completedLectures.includes(lecture._id)
-    ).length;
+    const completedLecturesInCourse = course.lectures.filter(lecture => 
+      user.completedLectures.some(id => id.toString() === lecture._id.toString())
+    );
+    const completedCount = completedLecturesInCourse.length;
     const progress = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+
+    console.log("Certificate check:", { totalLectures, completedCount, progress });
 
     if (progress < 100) {
       return res.status(400).json({ 
         success: false, 
-        message: "Course not completed yet",
-        progress 
+        message: `Course not completed yet. Progress: ${progress}%`,
+        progress,
+        completedCount,
+        totalLectures
       });
     }
 
@@ -532,14 +613,19 @@ app.get("/generate-certificate/:courseId", authenticateUser, async (req, res) =>
     const certificateData = {
       studentName: user.fullName,
       courseName: course.title,
+      courseCategory: course.category,
       completionDate: new Date().toLocaleDateString('en-US', { 
         year: 'numeric', 
         month: 'long', 
         day: 'numeric' 
       }),
-      certificateId: `CERT-${Date.now()}-${userId.toString().slice(-6)}`,
-      issueDate: new Date().toISOString()
+      certificateId: `CERT-${Date.now()}-${userId.toString().slice(-6).toUpperCase()}`,
+      issueDate: new Date().toISOString(),
+      totalLectures,
+      studentEmail: user.email
     };
+
+    console.log("Certificate generated successfully");
 
     res.status(200).json({
       success: true,

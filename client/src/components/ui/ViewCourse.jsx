@@ -127,13 +127,18 @@ const ViewCourse = () => {
       const token = Cookies.get("token");
       if (!token) {
         alert("Please login first!");
+        navigate("/login");
         return;
       }
+
+      console.log("Generating certificate for course:", id);
 
       const response = await axios.get(
         `https://codeup-ql59.onrender.com/generate-certificate/${id}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
+      console.log("Certificate response:", response.data);
 
       if (response.data.success) {
         setCertificateData(response.data.certificate);
@@ -141,7 +146,17 @@ const ViewCourse = () => {
       }
     } catch (error) {
       console.error("Certificate error:", error);
-      alert(error.response?.data?.message || "Failed to generate certificate");
+      const errorMsg = error.response?.data?.message || "Failed to generate certificate";
+      
+      if (error.response?.data?.progress !== undefined) {
+        alert(
+          `${errorMsg}\n\n` +
+          `Progress: ${error.response.data.completedCount}/${error.response.data.totalLectures} lectures\n` +
+          `(${error.response.data.progress}% complete)`
+        );
+      } else {
+        alert(errorMsg);
+      }
     }
   };
 

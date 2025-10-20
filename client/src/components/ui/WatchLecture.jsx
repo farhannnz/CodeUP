@@ -205,7 +205,17 @@ const WatchLecture = () => {
   const markAsCompleted = async () => {
     try {
       const token = Cookies.get("token");
-      if (!token || !lecture) return;
+      if (!token) {
+        alert("Please login to mark lectures as complete");
+        return;
+      }
+
+      if (!lecture || !lecture.courseId) {
+        alert("Lecture data not loaded");
+        return;
+      }
+
+      console.log("Marking lecture as complete:", { lectureId, courseId: lecture.courseId });
 
       const response = await axios.post(
         "https://codeup-ql59.onrender.com/complete-lecture",
@@ -218,21 +228,29 @@ const WatchLecture = () => {
         }
       );
 
+      console.log("Mark complete response:", response.data);
+
       if (response.data.success) {
         setIsCompleted(true);
-        alert(`Lecture completed! Course progress: ${response.data.progress}%`);
         
-        if (response.data.isCompleted) {
-          const viewCert = window.confirm("🎉 Congratulations! You've completed the course! View certificate?");
+        const progressMsg = `✅ Lecture completed!\n\nProgress: ${response.data.completedCount}/${response.data.totalLectures} lectures (${response.data.progress}%)`;
+        
+        if (response.data.isCompleted && response.data.progress === 100) {
+          const viewCert = window.confirm(
+            `🎉 Congratulations! You've completed the entire course!\n\n` +
+            `${response.data.completedCount}/${response.data.totalLectures} lectures completed\n\n` +
+            `Would you like to view your certificate?`
+          );
           if (viewCert) {
             navigate(`/course/${lecture.courseId}?showCertificate=true`);
           }
+        } else {
+          alert(progressMsg);
         }
       }
     } catch (error) {
       console.error("Error marking lecture as completed:", error);
-      setIsCompleted(true);
-      alert("Lecture marked as complete!");
+      alert(error.response?.data?.message || "Failed to mark lecture as complete. Please try again.");
     }
   };
 
