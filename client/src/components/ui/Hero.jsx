@@ -1,159 +1,260 @@
 import React, { useState } from "react";
+import { Search, TrendingUp, Users, Award } from "lucide-react";
 
 const Hero = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      alert(`Searching for "${searchQuery}"`); // Replace with actual search logic
+      console.log(`Searching for "${searchQuery}"`);
     }
   };
 
-  const styles = {
-    hero: {
-      position: "relative",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      textAlign: "center",
-      height: "100vh", // Full viewport height
-      padding: "20px",
-      color: "#f1f1f1", // Text color
-      background: "black", // Background color
-      fontFamily: "'Poppins', sans-serif",
-      overflow: "hidden",
-      width: "100%",
-    },
-    gridLines: {
-      position: "absolute",
-      top: 0,
-      left: 0,
-      width: "100%",
-      height: "100%",
-      backgroundImage: "linear-gradient(to right, #2a4365 1px, transparent 1px), linear-gradient(to bottom, #2a4365 1px, transparent 1px)",
-      backgroundSize: "40px 40px",
-      opacity: "0.3",
-    },
-    hexPattern: {
-      position: "absolute",
-      top: "25%",
-      right: "25%",
-      width: "96px",
-      height: "96px",
-      background: "url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M30 5 L55 20 L55 50 L30 65 L5 50 L5 20 Z\' stroke=\'%23405071\' fill=\'none\' stroke-width=\'1\'/%3E%3C/svg%3E')",
-      opacity: 0.05,
-      animation: "pulseHex 3s infinite",
-    },
-    pulse1: {
-      position: "absolute",
-      top: "25%",
-      right: "25%",
-      width: "256px",
-      height: "256px",
-      borderRadius: "50%",
-      backgroundColor: "#00bcd4", // Cyan
-      filter: "blur(80px)",
-      opacity: 0.2,
-      animation: "pulse 5s ease-in-out infinite",
-    },
-    pulse2: {
-      position: "absolute",
-      bottom: "25%",
-      left: "25%",
-      width: "384px",
-      height: "384px",
-      borderRadius: "50%",
-      backgroundColor: "#4c51bf", // Indigo
-      filter: "blur(80px)",
-      opacity: 0.1,
-      animation: "pulse 5s ease-in-out infinite",
-    },
-    tagline: {
-      fontSize: "clamp(24px, 4vw, 36px)", // Responsive font size
-      fontWeight: "bold",
-      marginBottom: "20px",
-      textShadow: "0px 2px 4px rgba(0, 0, 0, 0.7)",
-      background: "linear-gradient(90deg, #00bcd4, #6a11cb)", // Cyan to Purple
-      "-webkit-background-clip": "text",
-      color: "transparent",
-      animation: "gradientAnimation 4s linear infinite",
-    },
-    subtitle: {
-      fontSize: "clamp(14px, 2vw, 18px)", // Responsive font size
-      marginBottom: "30px",
-      color: "#cccccc", // Lighter text for the subtitle
-      maxWidth: "80%",
-    },
-    searchContainer: {
-      display: "flex",
-      flexWrap: "wrap",
-      gap: "10px",
-      alignItems: "center",
-      justifyContent: "center",
-      width: "100%",
-    },
-    searchInput: {
-      padding: "10px 15px",
-      border: "1px solid #00bcd4", // Border in cyan
-      borderRadius: "6px",
-      width: "clamp(200px, 40%, 400px)", // Responsive width
-      outline: "none",
-      fontSize: "16px",
-      fontFamily: "'Poppins', sans-serif",
-      color: "#f1f1f1", // Light text inside the input
-      background: "#1f2937", // Dark background
-      backdropFilter: "blur(10px)",
-    },
-    searchButton: {
-      padding: "10px 20px",
-      backgroundColor: "#00bcd4",  // Cyan color for the button
-      color: "#ffffff",  // White text
-      border: "none",
-      borderRadius: "6px",
-      cursor: "pointer",
-      fontSize: "16px",
-      fontWeight: "bold",
-      fontFamily: "'Poppins', sans-serif",
-      transition: "background-color 0.3s ease, transform 0.2s ease",
-    },
-    searchButtonHovered: {
-      transform: "scale(1.05)",
-    },
-  };
+  const stats = [
+    { icon: <Users size={24} />, value: "10,000+", label: "Active Students" },
+    { icon: <Award size={24} />, value: "500+", label: "Courses" },
+    { icon: <TrendingUp size={24} />, value: "95%", label: "Success Rate" },
+  ];
 
   return (
     <section style={styles.hero}>
-      <div style={styles.gridLines}></div>
-      <div style={styles.pulse1}></div>
-      <div style={styles.pulse2}></div>
-      <div style={styles.hexPattern}></div>
+      <div style={styles.container}>
+        <div style={styles.content}>
+          <div style={styles.badge}>
+            <span style={styles.badgeText}>🚀 Start Learning Today</span>
+          </div>
+          
+          <h1 style={styles.title}>
+            Master New Skills with
+            <span style={styles.gradientText}> Expert-Led Courses</span>
+          </h1>
+          
+          <p style={styles.subtitle}>
+            Join thousands of learners advancing their careers with our comprehensive online courses. 
+            Learn at your own pace, from anywhere in the world.
+          </p>
 
-      <h1 style={styles.tagline}>Unlock Your Potential</h1>
-      <p style={styles.subtitle}>Explore, learn, and excel with our next-generation curated courses for the future.</p>
+          <div style={styles.searchContainer}>
+            <div style={styles.searchWrapper}>
+              <Search size={20} style={styles.searchIcon} />
+              <input
+                type="text"
+                placeholder="What do you want to learn?"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={styles.searchInput}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              />
+              <button style={styles.searchButton} onClick={handleSearch}>
+                Search
+              </button>
+            </div>
+          </div>
 
-      <div style={styles.searchContainer}>
-        <input
-          type="text"
-          placeholder="Search for courses..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          style={styles.searchInput}
-          aria-label="Search for courses"
-        />
-        <button
-          style={{
-            ...styles.searchButton,
-            transform: searchQuery ? "scale(1.05)" : "scale(1)",
-          }}
-          onClick={handleSearch}
-          aria-label="Search button"
-        >
-          Search
-        </button>
+          <div style={styles.stats}>
+            {stats.map((stat, index) => (
+              <div key={index} style={styles.statItem}>
+                <div style={styles.statIcon}>{stat.icon}</div>
+                <div style={styles.statValue}>{stat.value}</div>
+                <div style={styles.statLabel}>{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={styles.imageContainer}>
+          <div style={styles.imageWrapper}>
+            <img
+              src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=80"
+              alt="Students learning"
+              style={styles.image}
+            />
+            <div style={styles.floatingCard1}>
+              <div style={styles.cardIcon}>📚</div>
+              <div>
+                <div style={styles.cardTitle}>Interactive Learning</div>
+                <div style={styles.cardText}>Hands-on projects</div>
+              </div>
+            </div>
+            <div style={styles.floatingCard2}>
+              <div style={styles.cardIcon}>⭐</div>
+              <div>
+                <div style={styles.cardTitle}>4.9/5 Rating</div>
+                <div style={styles.cardText}>From 10k+ reviews</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
+};
+
+const styles = {
+  hero: {
+    background: 'linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%)',
+    padding: '4rem 1rem',
+    minHeight: '600px',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  container: {
+    maxWidth: '1280px',
+    margin: '0 auto',
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '4rem',
+    alignItems: 'center',
+  },
+  content: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+  },
+  badge: {
+    display: 'inline-flex',
+    alignSelf: 'flex-start',
+    padding: '0.5rem 1rem',
+    background: 'white',
+    borderRadius: '9999px',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
+  },
+  badgeText: {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#6366f1',
+  },
+  title: {
+    fontSize: '3rem',
+    fontWeight: '800',
+    lineHeight: '1.2',
+    color: '#0f172a',
+    margin: 0,
+  },
+  gradientText: {
+    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+  },
+  subtitle: {
+    fontSize: '1.125rem',
+    color: '#64748b',
+    lineHeight: '1.7',
+    margin: 0,
+  },
+  searchContainer: {
+    marginTop: '1rem',
+  },
+  searchWrapper: {
+    display: 'flex',
+    alignItems: 'center',
+    background: 'white',
+    borderRadius: '0.75rem',
+    padding: '0.5rem',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+    border: '2px solid transparent',
+    transition: 'all 0.2s ease',
+  },
+  searchIcon: {
+    color: '#64748b',
+    marginLeft: '0.75rem',
+  },
+  searchInput: {
+    flex: 1,
+    border: 'none',
+    outline: 'none',
+    padding: '0.75rem 1rem',
+    fontSize: '1rem',
+    background: 'transparent',
+  },
+  searchButton: {
+    padding: '0.75rem 1.5rem',
+    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+    color: 'white',
+    border: 'none',
+    borderRadius: '0.5rem',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    fontSize: '0.875rem',
+  },
+  stats: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, 1fr)',
+    gap: '2rem',
+    marginTop: '2rem',
+  },
+  statItem: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  statIcon: {
+    color: '#6366f1',
+  },
+  statValue: {
+    fontSize: '1.5rem',
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  statLabel: {
+    fontSize: '0.875rem',
+    color: '#64748b',
+  },
+  imageContainer: {
+    position: 'relative',
+  },
+  imageWrapper: {
+    position: 'relative',
+    borderRadius: '1rem',
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: 'auto',
+    borderRadius: '1rem',
+    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+  },
+  floatingCard1: {
+    position: 'absolute',
+    top: '10%',
+    right: '-10%',
+    background: 'white',
+    padding: '1rem',
+    borderRadius: '0.75rem',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    animation: 'float 3s ease-in-out infinite',
+  },
+  floatingCard2: {
+    position: 'absolute',
+    bottom: '10%',
+    left: '-10%',
+    background: 'white',
+    padding: '1rem',
+    borderRadius: '0.75rem',
+    boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    animation: 'float 3s ease-in-out infinite 1.5s',
+  },
+  cardIcon: {
+    fontSize: '1.5rem',
+  },
+  cardTitle: {
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  cardText: {
+    fontSize: '0.75rem',
+    color: '#64748b',
+  },
 };
 
 export default Hero;

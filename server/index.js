@@ -7,6 +7,7 @@ const User = require("./models/userModel");
 const Course = require("./models/courseModel");
 const cors = require("cors");
 const Lecture = require("./models/lectureModel");
+const Comment = require("./models/commentModel");
 const Razorpay = require("razorpay");
 dotenv.config();
 
@@ -163,24 +164,24 @@ app.get("/profile", authenticateUser, async (req, res) => {
 app.put("/edit-profile", authenticateUser, async (req, res) => {
   const { fullName, email, photo_url } = req.body;
 
-  console.log("Authenticated user:", req.user);  // Log to check if req.user is populated
+  console.log("Authenticated user:", req.user);
   console.log("Received data:", fullName, email, photo_url);
 
   try {
     const updatedUser = await User.findByIdAndUpdate(
-      req.user._id, // req.user._id should be populated by authenticateUser middleware
+      req.user.id, // Fixed: use req.user.id instead of req.user._id
       { fullName, email, photo_url },
-      { new: true } // This returns the updated user object
+      { new: true, select: "-password" }
     );
 
     if (!updatedUser) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    res.status(200).json(updatedUser);
+    res.status(200).json({ success: true, user: updatedUser });
   } catch (error) {
     console.error("Error updating profile:", error);
-    res.status(500).send("Error updating profile");
+    res.status(500).json({ success: false, message: "Error updating profile", error: error.message });
   }
 });
 
@@ -197,12 +198,12 @@ app.get("/courses", async (req, res) => {
 });
 
 //API for Couse creation
-app.post("/create-course",authenticateUser, async (req,res)=>{
-  try{
-    const {title,category}= req.body;
-    if(!title || !category){
+app.post("/create-course", authenticateUser, async (req, res) => {
+  try {
+    const { title, category } = req.body;
+    if (!title || !category) {
       return express.res.status(400).json({
-             message:"All fields are required"
+        message: "All fields are required"
       })
     }
     const course = await Course.create({
@@ -211,10 +212,10 @@ app.post("/create-course",authenticateUser, async (req,res)=>{
     })
     return express.res.status(201).json({
       course,
-      message:"course created"
+      message: "course created"
     })
   }
-  catch(err){
+  catch (err) {
     console.log(err)
   }
 })
@@ -247,7 +248,7 @@ app.get("/view-courses/:id", async (req, res) => {
     }
 
     const course = await Course.findById(id).populate('lectures');
-    
+
     if (!course) {
       return res.status(404).json({ success: false, message: "Course not found" });
     }
@@ -266,40 +267,44 @@ app.get("/view-courses/:id", async (req, res) => {
 //Add lecture API 
 app.post("/add-lecture/:id", authenticateUser, async (req, res) => {
   try {
-    const { lectureTitle, videoUrl } = req.body;
-    const { id: courseId } = req.params;  // Extract courseId from URL parameters
+    const { lectureTitle, videoUrl, description, duration, isPreviewFree, resources } = req.body;
+    const { id: courseId } = req.params;
 
     if (!lectureTitle || !videoUrl) {
       return res.status(400).json({ message: "Lecture title and video URL are required" });
     }
 
-    // Create a new lecture and include courseId
-    const lecture = new Lecture({
-      lectureTitle,
-      videoUrl,
-      courseId,  // Attach the courseId to the lecture document
-    });
-
-    // Save the lecture to the database
-    await lecture.save();
-
-    // Find the course and add the lecture to the lectures array
+    // Get the current number of lectures to set order
     const course = await Course.findById(courseId);
     if (!course) {
       return res.status(404).json({ message: "Course not found" });
     }
 
-    // Push the lecture into the course's lectures array
+    const lecture = new Lecture({
+      lectureTitle,
+      videoUrl,
+      description: description || "",
+      duration: duration || "",
+      isPreviewFree: isPreviewFree || false,
+      resources: resources || [],
+      courseId,
+      order: course.lectures.length
+    });
+
+    await lecture.save();
+
     course.lectures.push(lecture._id);
     await course.save();
 
     res.status(201).json({
+      success: true,
       message: "Lecture created successfully",
       lecture,
     });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({
+      success: false,
       message: "Internal Server Error",
       error: error.message || error,
     });
@@ -411,6 +416,590 @@ app.post("/enroll-course", authenticateUser, async (req, res) => {
   }
 });
 
+
+// Mark lecture as completed
+app.post("/complete-lecture", authenticateUser, async (req, res) => {
+  try {
+    const { lectureId, courseId } = req.body;
+    const userId = req.user.id;
+
+    if (!lectureId || !courseId) {
+      return res.status(400).json({ success: false, message: "Lecture ID and Course ID are required" });
+    }
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Check if lecture already completed
+    if (!user.completedLectures.includes(lectureId)) {
+      user.completedLectures.push(lectureId);
+      await user.save();
+    }
+
+    // Get course progress
+    const course = await Course.findById(courseId).populate('lectures');
+    const totalLectures = course.lectures.length;
+    const completedCount = course.lectures.filter(lecture => 
+      user.completedLectures.includes(lecture._id)
+    ).length;
+    const progress = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Lecture marked as completed",
+      progress,
+      completedCount,
+      totalLectures,
+      isCompleted: progress === 100
+    });
+  } catch (error) {
+    console.error("Error completing lecture:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Get course progress
+app.get("/course-progress/:courseId", authenticateUser, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+
+    // Validate course ID
+    if (!courseId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, message: "Invalid Course ID" });
+    }
+
+    const user = await User.findById(userId);
+    const course = await Course.findById(courseId).populate('lectures');
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    const totalLectures = course.lectures.length;
+    const completedLectures = course.lectures.filter(lecture => 
+      user.completedLectures.includes(lecture._id)
+    );
+    const completedCount = completedLectures.length;
+    const progress = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+
+    res.status(200).json({
+      success: true,
+      progress,
+      completedCount,
+      totalLectures,
+      isCompleted: progress === 100,
+      completedLectureIds: user.completedLectures
+    });
+  } catch (error) {
+    console.error("Error fetching progress:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Generate certificate (returns certificate data)
+app.get("/generate-certificate/:courseId", authenticateUser, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    const course = await Course.findById(courseId).populate('lectures');
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    // Check if course is completed
+    const totalLectures = course.lectures.length;
+    const completedCount = course.lectures.filter(lecture => 
+      user.completedLectures.includes(lecture._id)
+    ).length;
+    const progress = totalLectures > 0 ? Math.round((completedCount / totalLectures) * 100) : 0;
+
+    if (progress < 100) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Course not completed yet",
+        progress 
+      });
+    }
+
+    // Generate certificate data
+    const certificateData = {
+      studentName: user.fullName,
+      courseName: course.title,
+      completionDate: new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      }),
+      certificateId: `CERT-${Date.now()}-${userId.toString().slice(-6)}`,
+      issueDate: new Date().toISOString()
+    };
+
+    res.status(200).json({
+      success: true,
+      certificate: certificateData
+    });
+  } catch (error) {
+    console.error("Error generating certificate:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Update lecture API
+app.put("/lectures/:id", authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { lectureTitle, videoUrl, description, duration, isPreviewFree, resources } = req.body;
+
+    const updatedLecture = await Lecture.findByIdAndUpdate(
+      id,
+      { lectureTitle, videoUrl, description, duration, isPreviewFree, resources },
+      { new: true }
+    );
+
+    if (!updatedLecture) {
+      return res.status(404).json({ success: false, message: "Lecture not found" });
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Lecture updated successfully", 
+      lecture: updatedLecture 
+    });
+  } catch (error) {
+    console.error("Error updating lecture:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Like/Unlike lecture
+app.post("/lectures/:id/like", authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const lecture = await Lecture.findById(id);
+    const user = await User.findById(userId);
+
+    if (!lecture) {
+      return res.status(404).json({ success: false, message: "Lecture not found" });
+    }
+
+    const hasLiked = lecture.likes.includes(userId);
+
+    if (hasLiked) {
+      // Unlike - remove user from lecture likes and lecture from user's liked lectures
+      lecture.likes = lecture.likes.filter(likeId => likeId.toString() !== userId);
+      user.likedLectures = user.likedLectures.filter(lectureId => lectureId.toString() !== id);
+    } else {
+      // Like - add user to lecture likes and lecture to user's liked lectures
+      lecture.likes.push(userId);
+      user.likedLectures.push(id);
+    }
+
+    await lecture.save();
+    await user.save();
+
+    res.status(200).json({ 
+      success: true, 
+      liked: !hasLiked,
+      likesCount: lecture.likes.length 
+    });
+  } catch (error) {
+    console.error("Error liking lecture:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Save/Update notes for a lecture
+app.post("/lectures/:id/notes", authenticateUser, async (req, res) => {
+  try {
+    const { id: lectureId } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    
+    // Find existing note
+    const existingNoteIndex = user.notes.findIndex(
+      note => note.lectureId.toString() === lectureId
+    );
+
+    if (existingNoteIndex > -1) {
+      // Update existing note
+      user.notes[existingNoteIndex].content = content;
+      user.notes[existingNoteIndex].timestamp = new Date();
+    } else {
+      // Create new note
+      user.notes.push({
+        lectureId,
+        content,
+        timestamp: new Date()
+      });
+    }
+
+    await user.save();
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Notes saved successfully",
+      note: existingNoteIndex > -1 ? user.notes[existingNoteIndex] : user.notes[user.notes.length - 1]
+    });
+  } catch (error) {
+    console.error("Error saving notes:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Get notes for a lecture
+app.get("/lectures/:id/notes", authenticateUser, async (req, res) => {
+  try {
+    const { id: lectureId } = req.params;
+    const userId = req.user.id;
+
+    const user = await User.findById(userId);
+    const note = user.notes.find(note => note.lectureId.toString() === lectureId);
+
+    res.status(200).json({ 
+      success: true, 
+      note: note || null
+    });
+  } catch (error) {
+    console.error("Error fetching notes:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Add comment to lecture
+app.post("/lectures/:id/comments", authenticateUser, async (req, res) => {
+  try {
+    const { id: lectureId } = req.params;
+    const { content } = req.body;
+    const userId = req.user.id;
+
+    if (!content || !content.trim()) {
+      return res.status(400).json({ success: false, message: "Comment content is required" });
+    }
+
+    const comment = new Comment({
+      lectureId,
+      userId,
+      content: content.trim()
+    });
+
+    await comment.save();
+    await comment.populate('userId', 'fullName photo_url');
+
+    res.status(201).json({ 
+      success: true, 
+      message: "Comment added successfully",
+      comment
+    });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Get comments for a lecture
+app.get("/lectures/:id/comments", async (req, res) => {
+  try {
+    const { id: lectureId } = req.params;
+
+    const comments = await Comment.find({ lectureId })
+      .populate('userId', 'fullName photo_url')
+      .populate('replies.userId', 'fullName photo_url')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ 
+      success: true, 
+      comments
+    });
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Delete comment
+app.delete("/comments/:id", authenticateUser, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const comment = await Comment.findById(id);
+    
+    if (!comment) {
+      return res.status(404).json({ success: false, message: "Comment not found" });
+    }
+
+    // Check if user owns the comment
+    if (comment.userId.toString() !== userId) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    await Comment.findByIdAndDelete(id);
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Comment deleted successfully"
+    });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Admin Stats API
+app.get("/admin/stats", authenticateUser, async (req, res) => {
+  try {
+    // Check if user is admin
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const totalCourses = await Course.countDocuments();
+    const totalUsers = await User.countDocuments({ role: "student" });
+    const totalLectures = await Lecture.countDocuments();
+    
+    // Calculate total revenue - properly handle Price field
+    const courses = await Course.find();
+    const totalRevenue = courses.reduce((sum, course) => {
+      const price = parseFloat(course.Price) || 0;
+      const enrolledCount = course.enrolledStudents?.length || 0;
+      return sum + (price * enrolledCount);
+    }, 0);
+
+    // Get recent enrollments (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    
+    const recentUsers = await User.find({
+      createdAt: { $gte: thirtyDaysAgo }
+    }).countDocuments();
+
+    // Top courses by enrollment
+    const topCourses = await Course.find()
+      .sort({ enrolledStudents: -1 })
+      .limit(5)
+      .select('title enrolledStudents Price category');
+
+    res.status(200).json({
+      success: true,
+      stats: {
+        totalCourses,
+        totalUsers,
+        totalLectures,
+        totalRevenue,
+        recentUsers,
+        topCourses
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching admin stats:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Get course analytics
+app.get("/admin/course/:id/analytics", authenticateUser, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const { id } = req.params;
+    const course = await Course.findById(id)
+      .populate('enrolledStudents', 'fullName email photo_url createdAt')
+      .populate('lectures');
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    // Get completion stats
+    const completionStats = await Promise.all(
+      course.enrolledStudents.map(async (student) => {
+        const user = await User.findById(student._id);
+        const completedCount = course.lectures.filter(lecture =>
+          user.completedLectures.includes(lecture._id)
+        ).length;
+        const progress = course.lectures.length > 0 
+          ? Math.round((completedCount / course.lectures.length) * 100) 
+          : 0;
+
+        return {
+          studentId: student._id,
+          studentName: student.fullName,
+          studentEmail: student.email,
+          studentPhoto: student.photo_url,
+          enrolledDate: student.createdAt,
+          progress,
+          completedLectures: completedCount,
+          totalLectures: course.lectures.length,
+          isCompleted: progress === 100
+        };
+      })
+    );
+
+    const revenue = course.Price * course.enrolledStudents.length;
+    const completedStudents = completionStats.filter(s => s.isCompleted).length;
+    const averageProgress = completionStats.length > 0
+      ? Math.round(completionStats.reduce((sum, s) => sum + s.progress, 0) / completionStats.length)
+      : 0;
+
+    res.status(200).json({
+      success: true,
+      analytics: {
+        course: {
+          id: course._id,
+          title: course.title,
+          category: course.category,
+          price: course.Price,
+          thumbnail: course.thumbnail,
+          totalLectures: course.lectures.length
+        },
+        stats: {
+          totalEnrolled: course.enrolledStudents.length,
+          completedStudents,
+          revenue,
+          averageProgress
+        },
+        students: completionStats
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching course analytics:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Delete course
+app.delete("/admin/course/:id", authenticateUser, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const { id } = req.params;
+    const course = await Course.findById(id);
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    // Delete all lectures associated with this course
+    await Lecture.deleteMany({ courseId: id });
+
+    // Delete all comments for lectures in this course
+    const lectures = await Lecture.find({ courseId: id });
+    const lectureIds = lectures.map(l => l._id);
+    await Comment.deleteMany({ lectureId: { $in: lectureIds } });
+
+    // Remove course from users' enrolled courses
+    await User.updateMany(
+      { enrolledCourses: id },
+      { $pull: { enrolledCourses: id } }
+    );
+
+    // Delete the course
+    await Course.findByIdAndDelete(id);
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Course and all associated data deleted successfully" 
+    });
+  } catch (error) {
+    console.error("Error deleting course:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Delete lecture
+app.delete("/admin/lecture/:id", authenticateUser, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    const { id } = req.params;
+    const lecture = await Lecture.findById(id);
+
+    if (!lecture) {
+      return res.status(404).json({ success: false, message: "Lecture not found" });
+    }
+
+    // Remove lecture from course
+    await Course.findByIdAndUpdate(
+      lecture.courseId,
+      { $pull: { lectures: id } }
+    );
+
+    // Delete comments for this lecture
+    await Comment.deleteMany({ lectureId: id });
+
+    // Remove from users' completed lectures
+    await User.updateMany(
+      { completedLectures: id },
+      { $pull: { completedLectures: id } }
+    );
+
+    // Remove from users' notes
+    await User.updateMany(
+      { "notes.lectureId": id },
+      { $pull: { notes: { lectureId: id } } }
+    );
+
+    // Delete the lecture
+    await Lecture.findByIdAndDelete(id);
+
+    res.status(200).json({ 
+      success: true, 
+      message: "Lecture deleted successfully" 
+    });
+  } catch (error) {
+    console.error("Error deleting lecture:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
+
+// Get enrollment trends (for charts)
+app.get("/admin/enrollment-trends", authenticateUser, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+
+    // Get enrollments for last 12 months
+    const trends = [];
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date();
+      date.setMonth(date.getMonth() - i);
+      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+      const count = await User.countDocuments({
+        createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+      });
+
+      trends.push({
+        month: startOfMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+        enrollments: count
+      });
+    }
+
+    res.status(200).json({ success: true, trends });
+  } catch (error) {
+    console.error("Error fetching enrollment trends:", error);
+    res.status(500).json({ success: false, message: "Internal Server Error", error: error.message });
+  }
+});
 
 // Start the server
 app.listen(port, () => {

@@ -9,10 +9,11 @@ import MyLearning from './components/ui/MyLearning';
 import Profile from './components/ui/Profile';
 import CreateCourse from './components/ui/CreateCourse';
 import AdminDashboard from './components/ui/AdminDashboard';
+import CourseAnalytics from './components/ui/CourseAnalytics';
 import EditCourse from './components/ui/EditCourse';
 import ViewCourse from './components/ui/ViewCourse';
 import AddLecture from './components/ui/AddLecture';
-import WatchLecture from './components/ui/WatchLecture';  // ✅ Fixed
+import WatchLecture from './components/ui/WatchLecture';
 
 function App() {
   return (
@@ -23,8 +24,10 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/my-learning" element={<MyLearning />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/create-course" element={<CreateCourse />} />
         <Route path="/admin/create-course" element={<CreateCourse />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/course/:id/analytics" element={<CourseAnalytics />} />
         <Route path="/edit-course/:id" element={<EditCourse />} />
         <Route path="/course/:id" element={<ViewCourse />} />
         <Route path="/add-lecture/:Courseid" element={<AddLecture />} />

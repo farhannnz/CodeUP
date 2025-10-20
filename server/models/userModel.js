@@ -14,12 +14,12 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    role: { // Changed from "name" to "role"
+    role: {
       type: String,
       enum: ["student", "admin"],
       default: "student",
     },
-    enrolledCourses: [ // Fixed typo in "enrolledCourses"
+    enrolledCourses: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "course",
@@ -35,6 +35,19 @@ const userSchema = mongoose.Schema(
       type: String,
       default: "",
     },
+    notes: [
+      {
+        lectureId: { type: mongoose.Schema.Types.ObjectId, ref: "Lecture" },
+        content: { type: String },
+        timestamp: { type: Date, default: Date.now }
+      }
+    ],
+    likedLectures: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Lecture",
+      },
+    ],
   },
   { timestamps: true }
 );

@@ -3,147 +3,226 @@ import axios from "axios";
 import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import CourseCard from "./CourseCard";
+import { Filter, Grid, List } from "lucide-react";
 
 const CourseList = () => {
-  const [course_list, setCourse_list] = useState([]); // Initialize as empty array
-  const [showAllCourses, setShowAllCourses] = useState(false); // State to control visibility of full list
+  const [course_list, setCourse_list] = useState([]);
+  const [filteredCourses, setFilteredCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState("All");
   const navigate = useNavigate();
 
   useEffect(() => {
     const token = Cookies.get("token");
 
-    // Fetch Courses from API
     const fetchCourseData = async () => {
       try {
         const response = await axios.get("https://codeup-ql59.onrender.com/courses", {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setCourse_list(response.data.courses); // Store courses in state
+        setCourse_list(response.data.courses || []);
+        setFilteredCourses(response.data.courses || []);
+        setLoading(false);
       } catch (error) {
         console.error("Error fetching courses:", error);
-        alert("Session Expired! Please Login Again.");
-        Cookies.remove("token");
-        navigate("/login");
+        setCourse_list([]);
+        setFilteredCourses([]);
+        setLoading(false);
       }
     };
 
     fetchCourseData();
   }, [navigate]);
 
-  const handleViewMore = () => {
-    setShowAllCourses(true); // Show the full list of courses when "View More" is clicked
+  const categories = ["All", ...new Set((course_list || []).map(course => course?.category).filter(Boolean))];
+
+  const handleCategoryFilter = (category) => {
+    setSelectedCategory(category);
+    if (category === "All") {
+      setFilteredCourses(course_list);
+    } else {
+      setFilteredCourses(course_list.filter(course => course.category === category));
+    }
   };
 
-  return (
-    <div style={styles.container}>
-      <h1 style={styles.heading}>Explore Our Courses</h1>
-
-      {/* Course Grid */}
-      <div style={styles.courseGrid}>
-        {course_list.slice(0, showAllCourses ? course_list.length : 8).map((course) => (
-          <CourseCard
-            key={course._id}
-            image={course.thumbnail || "https://th.bing.com/th/id/OIP.h10Fiiz9i2F5Z6Kf8126GgHaCa?rs=1&pid=ImgDetMain"} // Default image
-            name={course.title}
-            price={course.Price ? `₹${course.Price}` : "Free"}
-            id={course._id}
-          />
-        ))}
+  if (loading) {
+    return (
+      <div style={styles.loadingContainer}>
+        <div style={styles.spinner}></div>
+        <p style={styles.loadingText}>Loading courses...</p>
       </div>
+    );
+  }
 
-      {/* View More Button */}
-      {!showAllCourses && course_list.length > 8 && (
-        <button style={styles.viewMoreButton} onClick={handleViewMore}>
-          View More
-        </button>
-      )}
-    </div>
+  return (
+    <section style={styles.section}>
+      <div style={styles.container}>
+        <div style={styles.header}>
+          <div>
+            <h2 style={styles.title}>Explore Courses</h2>
+            <p style={styles.subtitle}>
+              Choose from {course_list.length} courses to advance your career
+            </p>
+          </div>
+        </div>
+
+        {/* Category Filter */}
+        <div style={styles.filterContainer}>
+          <div style={styles.filterLabel}>
+            <Filter size={20} />
+            <span>Filter by category:</span>
+          </div>
+          <div style={styles.categoryButtons}>
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => handleCategoryFilter(category)}
+                style={{
+                  ...styles.categoryBtn,
+                  ...(selectedCategory === category && styles.categoryBtnActive)
+                }}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Course Grid */}
+        {filteredCourses.length === 0 ? (
+          <div style={styles.emptyState}>
+            <div style={styles.emptyIcon}>📚</div>
+            <h3 style={styles.emptyTitle}>No courses found</h3>
+            <p style={styles.emptyText}>Try selecting a different category</p>
+          </div>
+        ) : (
+          <div style={styles.grid}>
+            {filteredCourses.map((course) => (
+              <CourseCard
+                key={course._id}
+                id={course._id}
+                image={course.thumbnail || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80"}
+                name={course.title}
+                price={course.Price || "Free"}
+                instructor="Expert Instructor"
+                rating="4.8"
+                students="1.2k"
+                duration="8 weeks"
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
   );
 };
 
 const styles = {
+  section: {
+    padding: '4rem 1rem',
+    background: '#f8fafc',
+  },
   container: {
-    textAlign: "center",
-    padding: "40px 20px",
-    backgroundColor: "#121212", // Dark background for consistency
-    minHeight: "100vh",
-    color: "#F5F5F5", // Light text color
-    position: "relative",
+    maxWidth: '1280px',
+    margin: '0 auto',
   },
-  heading: {
-    fontSize: "36px",
-    fontWeight: "bold",
-    color: "#F5F5F5", // Light color for the heading
-    marginBottom: "20px",
-    textShadow: "2px 2px 5px rgba(0, 0, 0, 0.2)", // Subtle text shadow for better contrast
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '2rem',
   },
-  courseGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-    gap: "20px",
-    justifyContent: "center",
-    padding: "0 20px",
+  title: {
+    fontSize: '2rem',
+    fontWeight: '800',
+    color: '#0f172a',
+    margin: 0,
   },
-  noCourses: {
-    color: "#333333", // Dark Gray for the no courses message
-    fontSize: "18px",
+  subtitle: {
+    fontSize: '1rem',
+    color: '#64748b',
+    marginTop: '0.5rem',
   },
-  viewMoreButton: {
-    padding: "12px 24px",
-    background: "linear-gradient(135deg, #00bcd4, #4c51bf)", // Gradient background for the button
-    color: "#fff",
-    border: "none",
-    borderRadius: "5px",
-    cursor: "pointer",
-    fontSize: "18px",
-    transition: "background-color 0.3s ease",
-    marginTop: "20px",
-    boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)", // Subtle shadow effect for depth
+  filterContainer: {
+    background: 'white',
+    padding: '1.5rem',
+    borderRadius: '1rem',
+    marginBottom: '2rem',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
   },
-  viewMoreButtonHover: {
-    backgroundColor: "#173146", // Darker shade of Deep Blue on hover
+  filterLabel: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    fontSize: '0.875rem',
+    fontWeight: '600',
+    color: '#334155',
+    marginBottom: '1rem',
   },
-  pulse1: {
-    position: "absolute",
-    top: "25%",
-    right: "25%",
-    width: "256px",
-    height: "256px",
-    borderRadius: "50%",
-    backgroundColor: "#00bcd4", // Cyan color
-    filter: "blur(80px)",
-    opacity: 0.1,
-    animation: "pulse 5s ease-in-out infinite",
+  categoryButtons: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.75rem',
   },
-  pulse2: {
-    position: "absolute",
-    bottom: "25%",
-    left: "25%",
-    width: "384px",
-    height: "384px",
-    borderRadius: "50%",
-    backgroundColor: "#4c51bf", // Indigo color
-    filter: "blur(80px)",
-    opacity: 0.1,
-    animation: "pulse 5s ease-in-out infinite",
+  categoryBtn: {
+    padding: '0.5rem 1rem',
+    background: 'white',
+    border: '2px solid #e2e8f0',
+    borderRadius: '0.5rem',
+    fontSize: '0.875rem',
+    fontWeight: '500',
+    color: '#64748b',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
   },
-};
-
-// Responsive styling for different screen sizes
-const responsiveStyles = {
-  "@media screen and (max-width: 768px)": {
-    courseGrid: {
-      gridTemplateColumns: "repeat(3, 1fr)", // 3 courses on mobile
-    },
-    viewMoreButton: {
-      padding: "10px 20px",
-      fontSize: "16px",
-    },
+  categoryBtnActive: {
+    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+    color: 'white',
+    borderColor: 'transparent',
   },
-  "@media screen and (min-width: 769px)": {
-    courseGrid: {
-      gridTemplateColumns: "repeat(4, 1fr)", // Up to 8 courses on desktop
-    },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gap: '1.5rem',
+  },
+  loadingContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '400px',
+    gap: '1rem',
+  },
+  spinner: {
+    border: '4px solid #e2e8f0',
+    borderTop: '4px solid #6366f1',
+    borderRadius: '50%',
+    width: '50px',
+    height: '50px',
+    animation: 'spin 1s linear infinite',
+  },
+  loadingText: {
+    color: '#64748b',
+    fontSize: '1rem',
+  },
+  emptyState: {
+    textAlign: 'center',
+    padding: '4rem 2rem',
+    background: 'white',
+    borderRadius: '1rem',
+  },
+  emptyIcon: {
+    fontSize: '4rem',
+    marginBottom: '1rem',
+  },
+  emptyTitle: {
+    fontSize: '1.5rem',
+    fontWeight: '700',
+    color: '#0f172a',
+    marginBottom: '0.5rem',
+  },
+  emptyText: {
+    color: '#64748b',
   },
 };
 
